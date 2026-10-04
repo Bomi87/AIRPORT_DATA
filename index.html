@@ -150,7 +150,7 @@
     function markerStyle(selected) { return { radius: selected ? 10 : 6, color: selected ? '#1d4ed8' : '#ffffff', weight: selected ? 3 : 1.8, fillColor: selected ? '#2563eb' : '#3976bc', fillOpacity: selected ? 1 : .85 }; }
     function updateMapLabels() {
       if (!airportMap) return;
-      const bounds = airportMap.getBounds(), detailed = airportMap.getZoom() >= 5;
+      const bounds = airportMap.getBounds(), detailed = airportMap.getZoom() >= 4;
       airportMarkers.forEach((marker, code) => {
         if (detailed && code !== selectedCode && bounds.contains(marker.getLatLng())) marker.openTooltip(); else marker.closeTooltip();
       });
