@@ -205,6 +205,29 @@
           return preview.href;
         }
       }
+      if (u.hostname === 'docs.google.com') {
+        const office = u.pathname.match(/^\/(presentation|spreadsheets)\/(?:u\/\d+\/)?d\/([a-zA-Z0-9_-]+)(?:\/|$)/);
+        if (office && office[2] !== 'e') {
+          const preview = new URL('https://docs.google.com/' + office[1] + '/d/' + office[2] + (office[1] === 'presentation' ? '/embed' : '/htmlview'));
+          const key = u.searchParams.get('resourcekey');
+          if (key) preview.searchParams.set('resourcekey', key);
+          if (office[1] === 'spreadsheets') {
+            const gid = u.searchParams.get('gid') || new URLSearchParams(u.hash.slice(1)).get('gid');
+            if (gid && /^\d+$/.test(gid)) preview.searchParams.set('gid', gid);
+          }
+          return preview.href;
+        }
+        // Google Docs 공유 링크를 문서 미리보기 주소로 연결합니다.
+        const published = u.pathname.match(/^\/document\/d\/e\/([a-zA-Z0-9_-]+)\/pub\/?$/);
+        if (published) { u.searchParams.set('embedded', 'true'); return u.href; }
+        const documentId = u.pathname.match(/^\/document\/(?:u\/\d+\/)?d\/([a-zA-Z0-9_-]+)(?:\/|$)/);
+        if (documentId && documentId[1] !== 'e') {
+          const preview = new URL('https://docs.google.com/document/d/' + documentId[1] + '/preview');
+          const key = u.searchParams.get('resourcekey');
+          if (key) preview.searchParams.set('resourcekey', key);
+          return preview.href;
+        }
+      }
       return /\.pdf$/i.test(u.pathname) ? u.href : '';
     }
     function mediaTitle(text) {
