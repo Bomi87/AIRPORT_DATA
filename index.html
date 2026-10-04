@@ -12,6 +12,34 @@
     *{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 12% 0%,#e7eef9 0%,transparent 40%),var(--bg);color:var(--ink);font-family:'Pretendard','Noto Sans KR',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;line-height:1.85;-webkit-font-smoothing:antialiased}
     button,input,select{font:inherit}button,a,select,input,summary{-webkit-tap-highlight-color:transparent}button:focus-visible,a:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid #76a6ff;outline-offset:3px}
     .wrap{max-width:1456px;margin:0 auto;padding:36px 36px 56px}header{position:relative;overflow:hidden;background:linear-gradient(118deg,#101f35,#182e4c 68%,#214166);padding:34px 36px 26px;border-radius:24px 24px 0 0;color:white}header:after{content:'';position:absolute;right:-52px;top:-130px;width:340px;height:340px;border:1px solid #ffffff0b;border-radius:50%;box-shadow:0 0 0 56px #ffffff03,0 0 0 112px #ffffff02;pointer-events:none}.eyebrow{font-size:10px;letter-spacing:.2em;color:#9bb1cd;font-weight:700}h1{font-size:36px;font-weight:650;letter-spacing:-.045em;line-height:1.3;margin:10px 0 0;position:relative;z-index:1}
+
+    .header-logo{
+      position:absolute;
+      right:48px;
+      top:22px;
+      width:135px;
+      height:135px;
+      object-fit:contain;
+      z-index:2;
+      border-radius:18px;
+    }
+    @media(max-width:900px){
+      .header-logo{
+        width:90px;
+        height:90px;
+        right:30px;
+        top:25px;
+      }
+    }
+    @media(max-width:520px){
+      .header-logo{
+        width:68px;
+        height:68px;
+        right:18px;
+        top:20px;
+      }
+    }
+
     .searchbox{padding:0 36px 28px;background:linear-gradient(118deg,#101f35,#182e4c 68%,#214166);border-radius:0 0 24px 24px;box-shadow:0 18px 40px -25px #0f23406b}form{display:flex;align-items:end;gap:10px;position:relative;z-index:1}.inputwrap{flex:1}label{display:block;font-size:11px;letter-spacing:.03em;color:#b6c7dc;font-weight:600;margin-bottom:7px}input{width:100%;height:54px;border:1px solid #ffffff30;border-radius:12px;padding:0 18px;font-size:18px;font-weight:650;letter-spacing:.08em;text-transform:uppercase;color:#17314d;background:#fff;box-shadow:0 3px 12px #0000000d}input::placeholder{font-weight:400;letter-spacing:.02em;color:#9caabc}input:focus{outline:3px solid #6b9cff50;border-color:#7ca8ff}button{min-height:40px;cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:8px 16px;background:#fff;color:var(--ink);font-weight:600;transition:background .15s,box-shadow .15s,transform .15s}button:hover{background:#edf3ff}button:active{transform:translateY(1px)}button:disabled{opacity:.4;cursor:default}.primary{height:54px;background:#4685ff;color:white;border-color:#5790ff;min-width:116px;box-shadow:0 5px 20px #2563eb25}.primary:hover{background:#5a92ff}.refresh{height:54px;background:#ffffff09;border-color:#ffffff25;color:#d7e4f5;font-size:13px;padding:0 18px}.refresh:hover{background:#ffffff16}#message{margin-top:0;font-size:12px}#message.error{margin-top:12px;color:#ffb9b4}
     .results{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.12fr);gap:24px;margin-top:28px;align-items:start}.panel{border:1px solid #e0e7f0;background:#fafbfd;border-radius:18px;overflow:hidden;box-shadow:0 5px 22px #19365603}.panelhead{background:#fff;padding:20px 22px 17px;display:flex;justify-content:space-between;align-items:center;gap:12px}.heading{display:flex;align-items:center;gap:11px}.icon{width:38px;height:38px;flex-shrink:0;border-radius:11px;background:#ecf2ff;color:#3a6be4;display:grid;place-items:center}.icon svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}.green{background:#e9f5f0;color:#198764}h2{font-size:17px;letter-spacing:-.025em;font-weight:700;margin:0;line-height:1.6}.count{display:inline-block;background:#f2f5fa;padding:1px 7px;border-radius:5px;color:#8090a5;font-size:10px;font-weight:500;margin-left:7px;vertical-align:middle}.count:empty{display:none}select{border:1px solid #e5ebf2;border-radius:8px;padding:6px 10px;max-width:126px;background:#fafbfd;color:#62748c;font-size:12px;min-height:34px;cursor:pointer}.panelmeta{font-size:10px;padding:0 22px 14px;color:#98a5b6;background:#fff;border-bottom:1px solid var(--line);white-space:pre-line;line-height:1.7}.content{padding:0 14px}.empty{padding:65px 20px;text-align:center;color:#97a4b4;font-size:13px}.empty:before{content:'';display:block;margin:0 auto 15px;width:32px;height:32px;border:1px dashed #cbd7e5;border-radius:10px;transform:rotate(-8deg)}.errorbox{margin:16px 0;padding:18px 20px;color:#af3d35;background:#fff5f4;border:1px solid #f5dedb;border-radius:12px;white-space:pre-wrap;font-size:13px}.errorbox button{margin-top:14px;display:block;font-size:12px;background:#fff;border-color:#edd5d2}
     .record{margin:14px 0;padding:22px;border:1px solid #e7edf4;border-radius:13px;background:white;box-shadow:0 3px 8px #162b4a02}.record h3{font-size:16px;font-weight:700;letter-spacing:-.025em;line-height:1.55;margin:0 0 10px;overflow-wrap:anywhere}.recordmeta{font-size:10px;line-height:1.8;color:#99a6b6;display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid #eef2f7}.badge{padding:2px 8px;border-radius:5px;background:#f0f5fc;color:#5a7ba5;font-weight:600;font-size:10px;letter-spacing:.03em}.text{white-space:pre-wrap;overflow-wrap:anywhere;margin:0 0 12px;line-height:1.95;color:#45596f;font-size:14px}.field{margin:14px 0}.fieldlabel{font-size:10px;font-weight:650;color:#96a3b4;margin-bottom:5px;letter-spacing:.025em}.field .text{margin:0}a{color:#3574df;text-decoration:none;overflow-wrap:anywhere}a:hover{color:#1d57b5;text-decoration:underline}details{background:#f8fafd;border:1px solid #eaf0f6;border-radius:8px;margin-top:18px;padding:10px 13px}summary{cursor:pointer;color:#8b9cb1;font-size:11px;font-weight:500;line-height:1.8}details[open] summary{color:#4773aa;padding-bottom:8px;border-bottom:1px solid #eaf0f6}details .text{font-size:12px}.warning{color:#957035;background:#fff9ed;border:1px solid #f6ead1;padding:10px 13px;border-radius:9px;margin:14px 0;font-size:11px;white-space:pre-wrap}.pager{padding:12px 18px;display:flex;align-items:center;justify-content:space-between;gap:10px;border-top:1px solid var(--line);font-size:11px;color:#8a9aaf;background:#fff}.pager[hidden]{display:none}.pager button{min-height:32px;padding:5px 12px;border-radius:7px;font-size:11px}.footer{font-size:10px;color:#9aa7b8;margin-top:21px;padding:0 3px;line-height:1.7}.loading{padding:65px 20px;color:#899bb1;text-align:center;font-size:12px}.loading:before{content:'';display:inline-block;width:13px;height:13px;border:2px solid #dce6f4;border-top-color:#4b80dd;border-radius:50%;animation:spin .75s linear infinite;vertical-align:middle;margin-right:8px}@keyframes spin{to{transform:rotate(360deg)}}
@@ -40,7 +68,11 @@
 
   <div id="appRoot" style="display:none;">
   <main class="wrap">
-    <header><div class="eyebrow">FLIGHT OPERATIONS / AIRPORT SOURCES</div><h1>Airport Data Search</h1></header>
+    <header>
+      <div class="eyebrow">FLIGHT OPERATIONS / AIRPORT SOURCES</div>
+      <h1>Airport Data Search</h1>
+      <img src="Google_map.png" alt="Airport Data Search" class="header-logo">
+    </header>
     <section class="searchbox" aria-label="공항 검색">
       <form id="searchForm"><div class="inputwrap"><label for="code">ICAO 공항코드</label><input id="code" placeholder="예: KBFI" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" required aria-describedby="message"></div><button class="primary" type="submit">조회</button><button class="refresh" id="refresh" type="button" disabled>원본 새로고침</button></form>
       <div id="message" role="status" aria-live="polite"></div>
