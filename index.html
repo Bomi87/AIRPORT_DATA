@@ -1,3 +1,4 @@
+<!-- Airport Data Search: PHOTO PREVIEW v11 / 2026-10-04 -->
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -234,7 +235,7 @@
       const title = lines.length ? lines[lines.length - 1] : '';
       return /^[\s)\].,;:!?]+$/.test(title) ? '' : title;
     }
-    function richText(text) {
+    function richText(text, options = {}) {
       const box = el('div', 'text');
       const value = String(text || '');
       const regex = /https?:\/\/[^\s<>"']+/gi;
@@ -262,7 +263,11 @@
         offset = match.index + href.length;
       }
       box.append(el('span', '', value.slice(offset)));
+      if (options.mediaOnly) box.replaceChildren();
+      if (options.previews === false) return box;
       previews.forEach(preview => {
+        if (options.seen && options.seen.has(preview.url)) return;
+        if (options.seen) options.seen.add(preview.url);
         const figure = el('figure', 'media-preview');
         if (preview.kind === 'document') {
           const frame = el('iframe'); frame.src = preview.url; frame.title = preview.title || '문서 미리보기'; frame.loading = 'lazy';
@@ -275,7 +280,7 @@
       });
       return box;
     }
-    function field(parent, label, text) { const n = el('div', 'field'); n.append(el('div', 'fieldlabel', label), richText(text)); parent.append(n); }
+    function field(parent, label, text, options) { const n = el('div', 'field'); n.append(el('div', 'fieldlabel', label), richText(text, options)); parent.append(n); }
     function kst(value) { return new Intl.DateTimeFormat('ko-KR', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(value)) + ' KST'; }
     function submit(refresh) {
       const code = $('code').value.normalize('NFKC').trim().toUpperCase();
@@ -283,7 +288,9 @@
       state.code = code; state.generation++; $('code').value = code; $('refresh').disabled = false;
       $('results').hidden = false; focusAirport(code);
       $('message').className = ''; $('message').textContent = '';
-      load('map', 1, refresh); load('sheet', 1, refresh);
+      const generation = state.generation;
+      if (refresh) load('map', 1, true).then(() => { if (state.generation === generation) load('sheet', 1, true); });
+      else { load('map', 1, false); load('sheet', 1, false); }
     }
     function load(source, page, refresh) {
       const generation = state.generation, serial = ++state[source].serial;
@@ -292,7 +299,7 @@
       $(source + 'Panel').setAttribute('aria-busy', 'true'); $(source + 'Count').textContent = ''; $(source + 'Pager').hidden = true;
       $(source + 'Meta').textContent = state.code + ' · 조회 중';
       const request = { source, code: state.code, page, refresh: !!refresh, aircraft: source === 'sheet' ? $('aircraft').value : '' };
-      transport.search(request).then(result => { if (valid()) { render(source, result); if (source === 'map' && refresh) initializeAirportMap(); } })
+      return transport.search(request).then(result => { if (valid()) { render(source, result); if (source === 'map' && refresh) initializeAirportMap(); } })
         .catch(error => {
           if (!valid()) return;
           $(source + 'Panel').setAttribute('aria-busy', 'false');
@@ -325,10 +332,29 @@
         } else {
           article.append(el('h3', '', (record.date || '날짜 정보 없음') + ' · ' + record.aircraft));
           const meta = el('div', 'recordmeta'); meta.append(el('span', 'badge', record.sheetName), el('span', '', record.title), el('span', '', record.rowNumber + '행')); article.append(meta);
-          if (record.memo) article.append(richText(record.memo));
+          if (record.memo) article.append(richText(record.memo, { previews: false }));
           else article.append(el('div', 'text', '저장된 운항 메모가 없습니다. 전체 행에서 기록을 확인하세요.'));
-          const details = el('details'); details.append(el('summary', '', '운항 메모 외 행 데이터 보기 (' + record.fields.length + '개 항목)'));
-          record.fields.forEach(f => field(details, f.label, f.value)); article.append(details);
+          const seenMedia = new Set();
+          const allFields = record.fields || [];
+          const gallery = richText([record.memo || '', ...allFields.map(f => f.value)].join('\n'), { mediaOnly: true, seen: seenMedia });
+          (record.images || []).forEach(item => {
+            const src = String(item.src || '');
+            const dataImage = /^data:image\/(?:png|jpeg|gif|webp|bmp);base64,[A-Za-z0-9+/=]+$/.test(src);
+            let safe = dataImage;
+            try { safe = safe || ['http:', 'https:'].includes(new URL(src).protocol); } catch (e) {}
+            if (!safe || seenMedia.has(src)) return;
+            seenMedia.add(src);
+            const figure = el('figure', 'media-preview'), img = el('img');
+            img.src = src; img.alt = '운항기록 첨부 사진'; img.loading = 'lazy'; img.referrerPolicy = 'no-referrer';
+            img.addEventListener('error', () => { figure.replaceChildren(el('figcaption', '', '사진을 불러오지 못했습니다. 원본 새로고침으로 다시 가져와 주세요.')); }, { once: true });
+            figure.append(img); gallery.append(figure);
+          });
+          if (gallery.children.length) article.append(gallery);
+          const visibleFields = allFields.filter(f => !['기종', '공항'].includes(String(f.label).replace(/\s*\(\d+\)$/, '').trim()));
+          if (visibleFields.length) {
+            const details = el('details'); details.append(el('summary', '', '운항 메모 외 행 데이터 보기 (' + visibleFields.length + '개 항목)'));
+            visibleFields.forEach(f => field(details, f.label, f.value, { previews: false })); article.append(details);
+          }
         }
         content.append(article);
       });
