@@ -10,6 +10,7 @@
     .wrap{max-width:1440px;margin:0 auto;padding:40px 28px 60px}.eyebrow{font-size:12px;letter-spacing:.14em;color:var(--blue);font-weight:750}h1{font-size:30px;letter-spacing:-.05em;margin:4px 0}header p{color:var(--muted);margin:4px 0 24px}
     .searchbox{padding:22px;background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:0 5px 22px #162b4a06}form{display:flex;align-items:end;gap:12px}label{display:block;font-size:13px;font-weight:650;margin-bottom:6px}.inputwrap{flex:1}input{width:100%;height:50px;border:1px solid #becbdc;border-radius:9px;padding:0 16px;font-size:19px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink);background:#fff}input:focus{outline:3px solid #1f5eff25;border-color:var(--blue)}button,select{font:inherit}button{min-height:44px;cursor:pointer;border:1px solid var(--line);border-radius:9px;padding:9px 16px;background:#fff;color:var(--ink);font-weight:650}button:hover{background:#edf3ff}button:disabled{opacity:.45;cursor:default}.primary{height:50px;background:var(--blue);color:#fff;border-color:var(--blue);min-width:105px}.primary:hover{background:#184fde}.refresh{height:50px}.examples{display:flex;flex-wrap:wrap;gap:7px;margin-top:14px;align-items:center}.examples span{font-size:12px;color:var(--muted);margin-right:3px}.examples button{min-height:30px;padding:2px 10px;font-size:12px;background:#f5f7fc}
     #message{min-height:26px;margin-top:9px;color:var(--muted);font-size:13px}#message.error{color:#b3261e}.results{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:22px;margin-top:24px;align-items:start}.panel{border:1px solid var(--line);background:#fff;border-radius:16px;overflow:hidden}.panelhead{padding:19px 20px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:10px}.heading{display:flex;align-items:center;gap:10px}.icon{width:34px;height:34px;border-radius:9px;background:#edf3ff;color:var(--blue);display:grid;place-items:center;font-weight:750}.green{background:#eaf8f1;color:#12835a}h2{font-size:18px;margin:0}.count{display:inline-block;color:var(--muted);font-size:12px;margin-left:6px}select{border:1px solid var(--line);border-radius:7px;padding:6px;max-width:130px;background:#fff;color:var(--ink)}.panelmeta{font-size:12px;padding:10px 20px;color:var(--muted);background:#fafbfd;white-space:pre-line}.content{padding:0 20px}.empty{padding:40px 10px;text-align:center;color:var(--muted)}.errorbox{padding:22px 0;color:#b3261e;white-space:pre-wrap}.errorbox button{margin-top:12px;display:block}.record{padding:20px 0;border-bottom:1px solid var(--line)}.record:last-child{border-bottom:0}.record h3{font-size:16px;line-height:1.4;margin:0 0 9px;overflow-wrap:anywhere}.recordmeta{font-size:12px;color:var(--muted);display:flex;flex-wrap:wrap;gap:7px;margin-bottom:12px}.badge{padding:2px 8px;border-radius:5px;background:#eef3fb;color:#37557d;font-weight:650}.mention{background:#fff4dd;color:#906311}.text{white-space:pre-wrap;overflow-wrap:anywhere;margin:0 0 12px}.field{margin:12px 0}.fieldlabel{font-size:12px;font-weight:750;color:var(--muted);margin-bottom:4px}.field .text{margin:0}a{color:var(--blue);text-decoration:none;overflow-wrap:anywhere}a:hover{text-decoration:underline}.sourcelink{font-size:12px;display:inline-block;margin-top:10px}details{background:#f6f8fc;border:1px solid #e6ebf2;border-radius:8px;margin-top:14px;padding:10px 12px}summary{cursor:pointer;color:#48617f;font-size:13px;font-weight:650}.warning{color:#8a5c00;background:#fff9e8;padding:10px 12px;border-radius:8px;margin:12px 0;font-size:13px;white-space:pre-wrap}.pager{padding:14px 20px;display:flex;align-items:center;justify-content:space-between;gap:10px;border-top:1px solid var(--line);font-size:13px}.pager[hidden]{display:none}.pager button{min-height:36px;padding:6px 12px}.footer{font-size:12px;color:var(--muted);margin-top:20px}.loading{padding:40px 10px;color:var(--muted);text-align:center}.loading:before{content:'';display:inline-block;width:14px;height:14px;border:2px solid #dce4f4;border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:8px}@keyframes spin{to{transform:rotate(360deg)}}
+    .media-preview{margin:16px 0 0;white-space:normal}.media-preview img{display:block;max-width:100%;max-height:480px;width:auto;height:auto;border:1px solid var(--line);border-radius:9px;object-fit:contain;background:#f6f8fc}.media-preview figcaption{font-size:12px;color:var(--muted);margin-top:6px}.inline-link{text-decoration:underline;text-underline-offset:3px}
     @media(max-width:850px){.results{grid-template-columns:1fr}.wrap{padding:24px 16px 40px}}
     @media(max-width:500px){h1{font-size:26px}.searchbox{padding:16px}form{flex-wrap:wrap;gap:8px}.inputwrap{flex-basis:100%}.primary{flex:1}.refresh{flex:1}.panelhead,.panelmeta,.pager{padding-left:16px;padding-right:16px}.content{padding:0 16px}h2{font-size:16px}}
     @media(prefers-reduced-motion:reduce){.loading:before{animation:none}}
@@ -84,12 +85,48 @@
     const state = { code: '', generation: 0, map: { serial: 0 }, sheet: { serial: 0 } };
     const $ = id => document.getElementById(id);
     function el(tag, className, text) { const n = document.createElement(tag); if (className) n.className = className; if (text !== undefined) n.textContent = text; return n; }
-    function sourceLink(url, title) {
-      const a = el('a', 'sourcelink', title);
-      try { const u = new URL(url); if (u.protocol === 'https:' && ['docs.google.com', 'www.google.com'].includes(u.hostname)) a.href = u.href; } catch (e) { /* 잘못된 주소는 링크로 만들지 않음 */ }
-      a.target = '_blank'; a.rel = 'noopener noreferrer'; return a;
+    function imagePreviewUrl(url) {
+      const u = new URL(url);
+      if (/\.(?:jpe?g|png|gif|webp|avif|bmp)$/i.test(u.pathname)) return u.href;
+      if (u.hostname === 'drive.google.com') {
+        const pathId = u.pathname.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+        const id = pathId ? pathId[1] : u.searchParams.get('id');
+        if (id && /^[a-zA-Z0-9_-]+$/.test(id)) return 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(id) + '&sz=w1200';
+      }
+      if (u.hostname.endsWith('.googleusercontent.com') && /(?:^|\.)(?:lh\d+|blogger)\.googleusercontent\.com$/.test(u.hostname)) return u.href;
+      return '';
     }
-    function field(parent, label, text) { const n = el('div', 'field'); n.append(el('div', 'fieldlabel', label), el('div', 'text', text)); parent.append(n); }
+    function richText(text) {
+      const box = el('div', 'text');
+      const value = String(text || '');
+      const regex = /https?:\/\/[^\s<>"']+/gi;
+      const photos = new Map();
+      let offset = 0, match;
+      while ((match = regex.exec(value))) {
+        let href = match[0].replace(/[.,;!?]+$/, '');
+        for (const pair of [['(', ')'], ['[', ']'], ['{', '}']]) {
+          while (href.endsWith(pair[1]) && href.split(pair[1]).length > href.split(pair[0]).length) href = href.slice(0, -1);
+        }
+        box.append(el('span', '', value.slice(offset, match.index)));
+        try {
+          const u = new URL(href);
+          if (!['https:', 'http:'].includes(u.protocol)) throw new Error('Unsupported URL');
+          const a = el('a', 'inline-link', href); a.href = u.href; a.target = '_blank'; a.rel = 'noopener noreferrer'; box.append(a);
+          const photo = imagePreviewUrl(u.href); if (photo) photos.set(u.href, photo);
+        } catch (error) { box.append(el('span', '', href)); }
+        offset = match.index + href.length;
+      }
+      box.append(el('span', '', value.slice(offset)));
+      photos.forEach((preview, href) => {
+        const figure = el('figure', 'media-preview');
+        const a = el('a'); a.href = href; a.target = '_blank'; a.rel = 'noopener noreferrer';
+        const img = el('img'); img.src = preview; img.alt = '링크의 이미지 미리보기'; img.loading = 'lazy'; img.referrerPolicy = 'no-referrer';
+        img.addEventListener('error', () => { a.remove(); figure.append(el('figcaption', '', '미리보기를 불러오지 못했습니다. 위 링크를 클릭해 확인하세요.')); }, { once: true });
+        a.append(img); figure.append(a); box.append(figure);
+      });
+      return box;
+    }
+    function field(parent, label, text) { const n = el('div', 'field'); n.append(el('div', 'fieldlabel', label), richText(text)); parent.append(n); }
     function kst(value) { return new Intl.DateTimeFormat('ko-KR', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(value)) + ' KST'; }
     function submit(refresh) {
       const code = $('code').value.normalize('NFKC').trim().toUpperCase();
@@ -124,19 +161,17 @@
         const article = el('article', 'record');
         if (source === 'map') {
           article.append(el('h3', '', record.title));
-          if (record.matchType === 'mention') { const meta = el('div', 'recordmeta'); meta.append(el('span', 'badge mention', '메모에 공항코드 포함')); article.append(meta); }
-          if (record.description) article.append(el('div', 'text', record.description));
+          if (record.description) article.append(richText(record.description));
           (record.fields || []).forEach(f => { if (!(f.label.toLowerCase() === 'description' && f.value === record.description)) field(article, f.label, f.value); });
           if (!record.description && !(record.fields || []).length) article.append(el('div', 'text', '저장된 설명이 없습니다.'));
           if (record.coordinates) field(article, '좌표', record.coordinates.lat + ', ' + record.coordinates.lng);
-          article.append(sourceLink(record.url, 'Google My Maps 원본 열기 ↗'));
         } else {
           article.append(el('h3', '', (record.date || '날짜 정보 없음') + ' · ' + record.aircraft));
           const meta = el('div', 'recordmeta'); meta.append(el('span', 'badge', record.sheetName), el('span', '', record.title), el('span', '', record.rowNumber + '행')); article.append(meta);
-          if (record.memo) article.append(el('div', 'text', record.memo));
+          if (record.memo) article.append(richText(record.memo));
           else article.append(el('div', 'text', '저장된 운항 메모가 없습니다. 전체 행에서 기록을 확인하세요.'));
           const details = el('details'); details.append(el('summary', '', '운항 메모 외 행 데이터 보기 (' + record.fields.length + '개 항목)'));
-          record.fields.forEach(f => field(details, f.label, f.value)); article.append(details, sourceLink(record.url, '운항기록 원본 행 열기 ↗'));
+          record.fields.forEach(f => field(details, f.label, f.value)); article.append(details);
         }
         content.append(article);
       });
