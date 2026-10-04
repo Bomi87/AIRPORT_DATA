@@ -130,6 +130,27 @@
       airportMap.setView([location.lat, location.lng], 7, { animate: false });
       updateMapLabels();
     }
+    // 원본 My Maps에서 받은 좌표만 저장합니다. 다른 공항 목록은 사용하지 않습니다.
+    const AIRPORT_LOCATION_CACHE_KEY = 'airport-locations-mymaps-1yxCHhr_sgIHWJqjtbzGr8Gdx6JYuP3o-v1';
+    function readAirportLocationCache() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(AIRPORT_LOCATION_CACHE_KEY));
+        if (!saved || saved.backend !== BACKEND_URL || !Array.isArray(saved.records) || !saved.records.length) return null;
+        return saved;
+      } catch (error) { return null; }
+    }
+    function displayAirportLocations(data, cached) {
+      airportLayer.clearLayers(); airportLocations.clear(); airportMarkers.clear();
+      if (selectedMarker) { airportMap.removeLayer(selectedMarker); selectedMarker = null; }
+      (data.records || []).forEach(location => {
+        if (!/^[A-Z]{4}$/.test(location.code) || !Number.isFinite(location.lat) || !Number.isFinite(location.lng) || Math.abs(location.lat) > 90 || Math.abs(location.lng) > 180) return;
+        airportLocations.set(location.code, location); addAirportMarker(location);
+      });
+      $('mapStatus').textContent = '공항 ' + airportLocations.size.toLocaleString() + '개' + (cached ? ' · 최신 목록 확인 중' : '');
+      if (selectedCode) focusAirport(selectedCode);
+      else if (airportLocations.size) airportMap.fitBounds(Array.from(airportLocations.values(), p => [p.lat, p.lng]), { padding: [35, 35], maxZoom: 7 });
+      updateMapLabels();
+    }
     async function initializeAirportMap(refresh = false) {
       if (!window.L) { $('mapStatus').textContent = '지도를 불러오지 못했습니다. 공항코드 검색은 사용할 수 있습니다.'; $('mapStatus').className = 'map-status error'; return; }
       if (!airportMap) {
@@ -143,22 +164,25 @@
         airportMap.on('moveend', updateMapLabels);
       }
       const serial = ++airportLoadSerial;
-      $('mapStatus').className = 'map-status'; $('mapStatus').textContent = '공항 위치를 불러오는 중입니다…';
+      $('mapStatus').className = 'map-status';
+      const saved = readAirportLocationCache();
+      if (!airportLocations.size && saved) displayAirportLocations(saved, true);
+      else $('mapStatus').textContent = airportLocations.size ? '공항 ' + airportLocations.size.toLocaleString() + '개 · 최신 목록 확인 중' : '공항 위치를 불러오는 중입니다…';
       try {
         const data = await transport.search({ source: 'airports', refresh: refresh === true });
         if (serial !== airportLoadSerial) return;
-        airportLayer.clearLayers(); airportLocations.clear(); airportMarkers.clear();
-        if (selectedMarker) { airportMap.removeLayer(selectedMarker); selectedMarker = null; }
-        (data.records || []).forEach(location => {
-          if (!/^[A-Z]{4}$/.test(location.code) || !Number.isFinite(location.lat) || !Number.isFinite(location.lng) || Math.abs(location.lat) > 90 || Math.abs(location.lng) > 180) return;
-          airportLocations.set(location.code, location); addAirportMarker(location);
-        });
-        $('mapStatus').textContent = '공항 ' + airportLocations.size.toLocaleString() + '개';
-        if (selectedCode) focusAirport(selectedCode);
-        else if (airportLocations.size) airportMap.fitBounds(Array.from(airportLocations.values(), p => [p.lat, p.lng]), { padding: [35, 35], maxZoom: 7 });
-        updateMapLabels();
+        // 이미 표시한 좌표가 같으면 지도 중심과 마커를 유지합니다.
+        const records = data.records || [];
+        const previous = Array.from(airportLocations.values());
+        if (JSON.stringify(previous) !== JSON.stringify(records)) displayAirportLocations(data, false);
+        else $('mapStatus').textContent = '공항 ' + airportLocations.size.toLocaleString() + '개';
+        try { localStorage.setItem(AIRPORT_LOCATION_CACHE_KEY, JSON.stringify({ backend: BACKEND_URL, records, fetchedAt: data.fetchedAt, savedAt: Date.now() })); } catch (error) {}
       } catch (error) {
         if (serial !== airportLoadSerial) return;
+        if (airportLocations.size) {
+          $('mapStatus').textContent = '공항 ' + airportLocations.size.toLocaleString() + '개 · 저장된 목록 표시 중 (최신 목록 확인 실패)';
+          return;
+        }
         $('mapStatus').textContent = '공항 목록 조회 실패: ' + (error.message || '↻ 버튼으로 다시 시도하세요.');
         $('mapStatus').className = 'map-status error';
       }
