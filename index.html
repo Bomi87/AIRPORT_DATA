@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Airport Data Search</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
     :root{--ink:#172b42;--muted:#7a8a9e;--line:#e6ecf3;--blue:#2563eb;--surface:#fff;--bg:#f3f6fa}
     *{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 12% 0%,#e7eef9 0%,transparent 40%),var(--bg);color:var(--ink);font-family:'Pretendard','Noto Sans KR',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;line-height:1.85;-webkit-font-smoothing:antialiased}
@@ -17,17 +19,24 @@
     @media(max-width:900px){.results{grid-template-columns:1fr;gap:20px}.wrap{padding:24px 20px 40px}header{padding:28px 26px 22px}.searchbox{padding:0 26px 24px}h1{font-size:32px}}
     @media(max-width:520px){.wrap{padding:14px 12px 32px}header{padding:25px 20px 20px;border-radius:18px 18px 0 0}.eyebrow{font-size:9px;letter-spacing:.15em}h1{font-size:29px;margin-top:9px}.searchbox{padding:0 20px 20px;border-radius:0 0 18px 18px}form{flex-wrap:wrap;gap:9px}.inputwrap{flex-basis:100%}input{height:50px;font-size:17px}.primary,.refresh{flex:1;height:44px;font-size:12px}.examples{gap:6px;margin-top:12px}.examples button{padding:2px 9px}.results{margin-top:20px}.panelhead{padding:16px 16px 12px}.panelmeta{padding:0 16px 12px}.content{padding:0 10px}.record{padding:18px 16px;margin:10px 0}.text{font-size:14px;line-height:1.95}.record h3{font-size:15px}.heading{gap:9px}.icon{width:33px;height:33px;border-radius:9px}h2{font-size:16px}select{max-width:115px;font-size:11px}.footer{padding:0 5px}}
     @media(prefers-reduced-motion:reduce){button{transition:none}.loading:before{animation:none}}
+    .airport-map-card{margin-top:26px;border:1px solid #e0e7f0;border-radius:18px;background:#fff;overflow:hidden;box-shadow:0 5px 22px #19365603}.map-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 20px}.map-toolbar h2{font-size:15px}.map-toolbar-actions{display:flex;align-items:center;gap:8px}.map-toolbar button{font-size:11px;padding:5px 11px;min-height:32px}.selected-airport{color:#3470d4;background:#edf4ff;border-radius:6px;font-size:11px;padding:4px 9px;font-weight:650}.selected-airport:empty{display:none}#airportMap{height:430px;background:#e8edf2;isolation:isolate}.map-status{padding:8px 20px;font-size:10px;color:#94a3b5;border-top:1px solid var(--line)}.map-status.error{color:#b35043}.airport-code-tooltip{background:#fffef5;border:1px solid #e1e5ed;box-shadow:0 2px 6px #15335612;color:#2f547c;font-weight:650;font-size:10px;padding:2px 5px;border-radius:4px;line-height:1.5}.airport-code-tooltip:before{display:none}.selected-code-tooltip{background:#2563eb;color:#fff;border-color:#2563eb}.leaflet-container{font-family:inherit}.leaflet-control-attribution{font-size:9px!important}.results[hidden]{display:none}.results{scroll-margin-top:18px}
+    @media(max-width:520px){#airportMap{height:330px}.airport-map-card{margin-top:18px}.map-toolbar{padding:12px 14px}.map-toolbar-actions{gap:5px}.map-toolbar button{font-size:10px;padding:4px 8px}.map-status{padding:8px 14px}}
   </style>
 </head>
 <body>
   <main class="wrap">
     <header><div class="eyebrow">FLIGHT OPERATIONS / AIRPORT SOURCES</div><h1>Airport Data Search</h1></header>
     <section class="searchbox" aria-label="공항 검색">
-      <form id="searchForm"><div class="inputwrap"><label for="code">ICAO 공항코드</label><input id="code" placeholder="예: KBFI" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" required aria-describedby="message"></div><button class="primary" type="submit">검색</button><button class="refresh" id="refresh" type="button" disabled>원본 새로고침</button></form>
+      <form id="searchForm"><div class="inputwrap"><label for="code">ICAO 공항코드</label><input id="code" placeholder="예: KBFI" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" required aria-describedby="message"></div><button class="primary" type="submit">조회</button><button class="refresh" id="refresh" type="button" disabled>원본 새로고침</button></form>
       <div class="examples"><span>빠른 검색</span><button type="button" data-code="RKSS">RKSS</button><button type="button" data-code="KBFI">KBFI</button><button type="button" data-code="KEWR">KEWR</button><button type="button" data-code="RJTT">RJTT</button></div>
       <div id="message" role="status" aria-live="polite"></div>
     </section>
-    <div class="results">
+    <section class="airport-map-card" aria-label="공항 지도">
+      <div class="map-toolbar"><h2>공항 지도</h2><div class="map-toolbar-actions"><span id="selectedAirport" class="selected-airport"></span><button id="mapHome" type="button">한국</button><button id="mapWorld" type="button">전체 보기</button><button id="mapReload" type="button" aria-label="공항 지도 다시 불러오기">↻</button></div></div>
+      <div id="airportMap" aria-label="공항 마커를 클릭하면 자료를 조회합니다"></div>
+      <div id="mapStatus" class="map-status" role="status">공항 위치를 불러오는 중입니다…</div>
+    </section>
+    <div class="results" id="results" hidden>
       <section class="panel" id="mapPanel" aria-label="공항정보 검색 결과"><div class="panelhead"><div class="heading"><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c3 3 3 14 0 17M12 3.5c-3 3-3 14 0 17"/></svg></span><h2>공항정보 <span class="count" id="mapCount"></span></h2></div></div><div class="panelmeta" id="mapMeta">지도에 저장된 공항 참고자료</div><div class="content" id="mapContent" aria-live="polite"><div class="empty">검색하면 지도 자료가 표시됩니다.</div></div><div class="pager" id="mapPager" hidden></div></section>
       <section class="panel" id="sheetPanel" aria-label="운항기록 검색 결과"><div class="panelhead"><div class="heading"><span class="icon green" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m3 11 7 1 7-8 3 1-5 9 4 5-2 1-5-3-4 3-2-1 2-5-5-1z"/></svg></span><h2>운항기록 <span class="count" id="sheetCount"></span></h2></div><select id="aircraft" aria-label="기종 시트 선택"><option value="">전체 시트</option><option value="ACJ">ACJ</option><option value="G650">G650</option></select></div><div class="panelmeta" id="sheetMeta">운항 메모 · 최신 기록순</div><div class="content" id="sheetContent" aria-live="polite"><div class="empty">검색하면 운항기록이 표시됩니다.</div></div><div class="pager" id="sheetPager" hidden></div></section>
     </div>
@@ -88,6 +97,92 @@
     const state = { code: '', generation: 0, map: { serial: 0 }, sheet: { serial: 0 } };
     const $ = id => document.getElementById(id);
     function el(tag, className, text) { const n = document.createElement(tag); if (className) n.className = className; if (text !== undefined) n.textContent = text; return n; }
+    const AIRPORT_KML_URL = 'https://bomi87.github.io/FLIGHT_MAP/ACJ_NDB.kml';
+    let airportMap = null, airportLayer = null, selectedMarker = null, airportLoadSerial = 0;
+    const airportLocations = new Map();
+    const airportMarkers = new Map();
+    let selectedCode = '';
+    function xmlChildren(element, name) { return Array.from(element.getElementsByTagNameNS('*', name)); }
+    function parseAirportLocations(text) {
+      const xml = new DOMParser().parseFromString(text, 'application/xml');
+      if (xml.getElementsByTagName('parsererror').length) throw new Error('공항 좌표 파일 형식이 올바르지 않습니다.');
+      const locations = new Map();
+      Array.from(xml.getElementsByTagNameNS('*', 'Placemark')).forEach(pm => {
+        const point = xmlChildren(pm, 'Point')[0]; if (!point) return;
+        const coordinate = xmlChildren(point, 'coordinates')[0]; if (!coordinate) return;
+        const titleNode = xmlChildren(pm, 'name')[0];
+        const title = titleNode ? titleNode.textContent.trim() : '';
+        let match = title.toUpperCase().match(/\b[A-Z]{4}\b/);
+        if (!match) {
+          const data = [...xmlChildren(pm, 'Data'), ...xmlChildren(pm, 'SimpleData')].find(d => /^(icao|icao code|airport code|공항코드|공항 코드)$/i.test(d.getAttribute('name') || ''));
+          if (data) match = data.textContent.toUpperCase().match(/\b[A-Z]{4}\b/);
+        }
+        if (!match) return; // 다른 공항을 언급한 설명에서 위치를 추정하지 않습니다.
+        const xy = coordinate.textContent.trim().split(/\s+/)[0].split(',').map(Number);
+        if (xy.length < 2 || !Number.isFinite(xy[0]) || !Number.isFinite(xy[1]) || Math.abs(xy[0]) > 180 || Math.abs(xy[1]) > 90) return;
+        if (!locations.has(match[0])) locations.set(match[0], { code: match[0], title, lat: xy[1], lng: xy[0] });
+      });
+      return locations;
+    }
+    function markerStyle(selected) { return { radius: selected ? 10 : 6, color: selected ? '#1d4ed8' : '#ffffff', weight: selected ? 3 : 1.8, fillColor: selected ? '#2563eb' : '#3976bc', fillOpacity: selected ? 1 : .85 }; }
+    function updateMapLabels() {
+      if (!airportMap) return;
+      const bounds = airportMap.getBounds(), detailed = airportMap.getZoom() >= 5;
+      airportMarkers.forEach((marker, code) => {
+        if (detailed && code !== selectedCode && bounds.contains(marker.getLatLng())) marker.openTooltip(); else marker.closeTooltip();
+      });
+    }
+    function addAirportMarker(location) {
+      if (!airportMap || airportMarkers.has(location.code)) return;
+      const label = el('span', '', location.code);
+      const marker = L.circleMarker([location.lat, location.lng], markerStyle(false)).addTo(airportLayer)
+        .bindTooltip(label, { permanent: true, direction: 'right', offset: [8, 0], className: 'airport-code-tooltip' });
+      marker.on('click', () => { $('code').value = location.code; submit(false); $('results').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+      airportMarkers.set(location.code, marker);
+    }
+    function focusAirport(code) {
+      selectedCode = code; $('selectedAirport').textContent = code;
+      if (!airportMap) return;
+      if (selectedMarker) { airportMap.removeLayer(selectedMarker); selectedMarker = null; }
+      airportMarkers.forEach((marker, markerCode) => marker.setStyle(markerStyle(markerCode === code)));
+      const location = airportLocations.get(code);
+      if (!location) return;
+      const label = el('span', '', code);
+      selectedMarker = L.circleMarker([location.lat, location.lng], { radius: 17, color: '#397af0', weight: 2, fillOpacity: .08, interactive: false }).addTo(airportMap)
+        .bindTooltip(label, { permanent: true, direction: 'top', offset: [0, -16], className: 'airport-code-tooltip selected-code-tooltip' });
+      airportMap.setView([location.lat, location.lng], 7, { animate: false });
+      updateMapLabels();
+    }
+    async function initializeAirportMap() {
+      if (!window.L) { $('mapStatus').textContent = '지도를 불러오지 못했습니다. 공항코드 검색은 사용할 수 있습니다.'; $('mapStatus').className = 'map-status error'; return; }
+      if (!airportMap) {
+        airportMap = L.map('airportMap', { zoomControl: false, preferCanvas: true, worldCopyJump: true, minZoom: 2, maxZoom: 16 }).setView([36, 128], 5);
+        L.layerGroup([
+          L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', { maxZoom: 16, attribution: 'Tiles © Esri' }),
+          L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}', { maxZoom: 16, attribution: 'Labels © Esri' })
+        ]).addTo(airportMap);
+        L.control.zoom({ position: 'bottomleft' }).addTo(airportMap);
+        airportLayer = L.layerGroup().addTo(airportMap);
+        airportMap.on('moveend', updateMapLabels);
+      }
+      const serial = ++airportLoadSerial;
+      $('mapStatus').className = 'map-status'; $('mapStatus').textContent = '공항 위치를 불러오는 중입니다…';
+      const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 20000);
+      try {
+        const response = await fetch(AIRPORT_KML_URL, { signal: controller.signal });
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        const locations = parseAirportLocations(await response.text());
+        if (!locations.size) throw new Error('좌표가 있는 공항이 없습니다.');
+        if (serial !== airportLoadSerial) return;
+        locations.forEach((location, code) => { airportLocations.set(code, location); addAirportMarker(location); });
+        $('mapStatus').textContent = '공항 ' + airportLocations.size.toLocaleString() + '개';
+        if (selectedCode) focusAirport(selectedCode); else updateMapLabels();
+      } catch (error) {
+        if (serial !== airportLoadSerial) return;
+        $('mapStatus').textContent = '공항 위치를 불러오지 못했습니다. ↻ 버튼으로 다시 시도하거나 공항코드로 조회하세요.';
+        $('mapStatus').className = 'map-status error';
+      } finally { clearTimeout(timer); }
+    }
     function imagePreviewUrl(url) {
       const u = new URL(url);
       if (/\.(?:jpe?g|png|gif|webp|avif|bmp)$/i.test(u.pathname)) return u.href;
@@ -135,6 +230,7 @@
       const code = $('code').value.normalize('NFKC').trim().toUpperCase();
       if (!/^[A-Z]{4}$/.test(code)) { $('message').textContent = 'ICAO 공항코드 4자리를 입력하세요. 예: RKSS'; $('message').className = 'error'; $('code').focus(); return; }
       state.code = code; state.generation++; $('code').value = code; $('refresh').disabled = false;
+      $('results').hidden = false; focusAirport(code);
       $('message').className = ''; $('message').textContent = '';
       load('map', 1, refresh); load('sheet', 1, refresh);
     }
@@ -156,6 +252,13 @@
     }
     function render(source, data) {
       $(source + 'Panel').setAttribute('aria-busy', 'false'); $(source + 'Count').textContent = data.total + '건';
+      if (source === 'map' && !airportLocations.has(data.code)) {
+        const located = data.records.find(record => record.coordinates);
+        if (located) {
+          const location = { code: data.code, title: located.title, lat: located.coordinates.lat, lng: located.coordinates.lng };
+          airportLocations.set(data.code, location); addAirportMarker(location); focusAirport(data.code);
+        }
+      }
       $(source + 'Meta').textContent = data.code + ' · 조회 ' + kst(data.fetchedAt) + (data.cached ? ' · 5분 이내 캐시' : ' · 원본 조회');
       const content = $(source + 'Content'); content.replaceChildren();
       if (data.warnings && data.warnings.length) content.append(el('div', 'warning', data.warnings.join('\n')));
@@ -185,6 +288,10 @@
         pager.append(previous, el('span', '', data.page + ' / ' + data.pages), next);
       }
     }
+    $('mapHome').addEventListener('click', () => { if (airportMap) airportMap.setView([36, 128], 5); });
+    $('mapWorld').addEventListener('click', () => { if (airportMap) airportMap.setView([24, 20], 2); });
+    $('mapReload').addEventListener('click', initializeAirportMap);
+    initializeAirportMap();
     $('searchForm').addEventListener('submit', e => { e.preventDefault(); submit(false); });
     $('refresh').addEventListener('click', () => submit(true));
     $('aircraft').addEventListener('change', () => { if (state.code) load('sheet', 1, false); });
