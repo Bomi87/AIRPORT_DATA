@@ -25,6 +25,20 @@
   </style>
 </head>
 <body>
+  <div id="authScreen" style="
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+    background:#f3f6fa;
+    color:#172b42;
+    font-family:'Pretendard','Noto Sans KR',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  ">
+    승인 확인 중...
+  </div>
+
+  <div id="appRoot" style="display:none;">
   <main class="wrap">
     <header><div class="eyebrow">FLIGHT OPERATIONS / AIRPORT SOURCES</div><h1>Airport Data Search</h1></header>
     <section class="searchbox" aria-label="공항 검색">
@@ -365,11 +379,32 @@
         pager.append(previous, el('span', '', data.page + ' / ' + data.pages), next);
       }
     }
-    $('mapReload').addEventListener('click', () => initializeAirportMap(true));
-    initializeAirportMap();
-    $('searchForm').addEventListener('submit', e => { e.preventDefault(); submit(false); });
-    $('refresh').addEventListener('click', () => submit(true));
-    $('aircraft').addEventListener('change', () => { if (state.code) load('sheet', 1, false); });
+    let AIRPORT_APP_STARTED = false;
+
+    function startAirportAppAfterAuth() {
+      if (AIRPORT_APP_STARTED) return;
+      AIRPORT_APP_STARTED = true;
+
+      $('mapReload').addEventListener('click', () => initializeAirportMap(true));
+      $('searchForm').addEventListener('submit', e => { e.preventDefault(); submit(false); });
+      $('refresh').addEventListener('click', () => submit(true));
+      $('aircraft').addEventListener('change', () => { if (state.code) load('sheet', 1, false); });
+
+      initializeAirportMap();
+    }
+
+    (function waitForPortalAuth() {
+      // common-auth.js가 Gmail/Portal 인증과 현재 앱 권한 확인을 완료한 뒤에만 실행
+      if (window.CURRENT_PORTAL_USER) {
+        startAirportAppAfterAuth();
+        return;
+      }
+      setTimeout(waitForPortalAuth, 200);
+    })();
   </script>
+  </div>
+
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="https://bomi87.github.io/SK-Aviation-portal/common-auth.js"></script>
 </body>
 </html>
