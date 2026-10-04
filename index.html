@@ -307,7 +307,6 @@
         pager.append(previous, el('span', '', data.page + ' / ' + data.pages), next);
       }
     }
-    $('mapHome').addEventListener('click', () => { if (airportMap) airportMap.setView([24, 20], 2); });
     $('mapReload').addEventListener('click', () => initializeAirportMap(true));
     initializeAirportMap();
     $('searchForm').addEventListener('submit', e => { e.preventDefault(); submit(false); });
