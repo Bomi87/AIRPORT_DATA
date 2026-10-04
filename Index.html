@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <base target="_top">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>공항 자료 검색</title>
@@ -32,6 +31,56 @@
   </main>
   <script>
     'use strict';
+    // 보내주신 Apps Script 웹 앱 URL을 반영했습니다.
+    const BACKEND_URL = 'https://script.google.com/macros/s/AKfycbwgrAuJL4eMVjBsaEKshEaycDEhRJjJvqli_tJwoUM0_9T4uFmodbOV5aqV6UyPKpZx/exec';
+    // Apps Script의 중첩 iframe에서 보내는 ready 응답의 source Window를 저장합니다.
+    // GitHub 페이지에서 google.script.run을 직접 호출하지 않습니다.
+    const transport = (() => {
+      let frame = null, remote = null, remoteOrigin = '', channel = '', connecting = null, sequence = 0;
+      const pending = new Map();
+      function connect() {
+        if (remote) return Promise.resolve();
+        if (connecting) return connecting;
+        if (!/^https:\/\//.test(location.origin)) return Promise.reject(new Error('HTTPS GitHub Pages 주소에서 실행하세요.'));
+        const bytes = crypto.getRandomValues(new Uint8Array(16));
+        channel = Array.from(bytes, x => x.toString(16).padStart(2, '0')).join('');
+        connecting = new Promise((resolve, reject) => {
+          let handshakeTimer;
+          const receive = event => {
+            const data = event.data;
+            if (!data || data.app !== 'airport-sources' || data.channel !== channel) return;
+            if (!/^https:\/\/(?:[a-z0-9-]+-)?script\.googleusercontent\.com$/.test(event.origin) && event.origin !== 'https://script.google.com') return;
+            if (data.type === 'ready' && !remote && event.source) {
+              remote = event.source; remoteOrigin = event.origin; clearTimeout(handshakeTimer); resolve(); return;
+            }
+            if (event.source !== remote || event.origin !== remoteOrigin || data.type !== 'result') return;
+            const entry = pending.get(data.id); if (!entry) return;
+            clearTimeout(entry.timer); pending.delete(data.id);
+            if (data.ok) entry.resolve(data.result); else entry.reject(new Error(data.error || '백엔드 조회 실패'));
+          };
+          window.addEventListener('message', receive);
+          handshakeTimer = setTimeout(() => {
+            window.removeEventListener('message', receive); if (frame) frame.remove(); frame = null; connecting = null;
+            reject(new Error('백엔드 연결 실패: Apps Script 새 버전 배포, 접속 권한, ALLOWED_FRONTEND_ORIGINS를 확인하세요. 로그인 필요 시 백엔드 URL을 별도 탭에서 먼저 여세요.'));
+          }, 30000);
+          const url = new URL(BACKEND_URL); url.searchParams.set('clientOrigin', location.origin); url.searchParams.set('channel', channel);
+          frame = document.createElement('iframe'); frame.title = '공항검색 백엔드 연결'; frame.setAttribute('aria-hidden', 'true');
+          frame.style.cssText = 'position:absolute;width:1px;height:1px;left:-10000px;border:0;'; frame.src = url.href; document.body.append(frame);
+        });
+        return connecting;
+      }
+      async function search(request) {
+        await connect();
+        const id = 'req-' + (++sequence);
+        return new Promise((resolve, reject) => {
+          const timer = setTimeout(() => { pending.delete(id); reject(new Error('조회 시간이 초과되었습니다. 다시 검색하세요.')); }, 190000);
+          pending.set(id, { resolve, reject, timer });
+          try { remote.postMessage({ app: 'airport-sources', channel, type: 'search', id, request }, remoteOrigin); }
+          catch (error) { clearTimeout(timer); pending.delete(id); reject(error); }
+        });
+      }
+      return { search };
+    })();
     const state = { code: '', generation: 0, map: { serial: 0 }, sheet: { serial: 0 } };
     const $ = id => document.getElementById(id);
     function el(tag, className, text) { const n = document.createElement(tag); if (className) n.className = className; if (text !== undefined) n.textContent = text; return n; }
@@ -45,7 +94,6 @@
     function submit(refresh) {
       const code = $('code').value.normalize('NFKC').trim().toUpperCase();
       if (!/^[A-Z]{4}$/.test(code)) { $('message').textContent = 'ICAO 공항코드 4자리를 입력하세요. 예: RKSS'; $('message').className = 'error'; $('code').focus(); return; }
-      if (!window.google || !google.script || !google.script.run) { $('message').textContent = 'Apps Script 웹 앱 배포 주소에서 열어주세요.'; $('message').className = 'error'; return; }
       state.code = code; state.generation++; $('code').value = code; $('refresh').disabled = false;
       $('message').className = ''; $('message').textContent = code + ' · 두 소스의 자료를 조회합니다.';
       load('map', 1, refresh); load('sheet', 1, refresh);
@@ -57,14 +105,14 @@
       $(source + 'Panel').setAttribute('aria-busy', 'true'); $(source + 'Count').textContent = ''; $(source + 'Pager').hidden = true;
       $(source + 'Meta').textContent = state.code + ' · 조회 중';
       const request = { source, code: state.code, page, refresh: !!refresh, aircraft: source === 'sheet' ? $('aircraft').value : '' };
-      google.script.run.withSuccessHandler(result => { if (valid()) render(source, result); })
-        .withFailureHandler(error => {
+      transport.search(request).then(result => { if (valid()) render(source, result); })
+        .catch(error => {
           if (!valid()) return;
           $(source + 'Panel').setAttribute('aria-busy', 'false');
           $(source + 'Meta').textContent = state.code + ' · 조회 실패';
           const box = el('div', 'errorbox', error.message || '자료를 불러오지 못했습니다.');
           const retry = el('button', '', '다시 시도'); retry.type = 'button'; retry.addEventListener('click', () => load(source, page, true)); box.append(retry); content.replaceChildren(box);
-        }).searchAirportSource(request);
+        });
     }
     function render(source, data) {
       $(source + 'Panel').setAttribute('aria-busy', 'false'); $(source + 'Count').textContent = data.total + '건';
