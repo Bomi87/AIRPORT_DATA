@@ -3,7 +3,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <title>Airport Data Search</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -47,10 +47,10 @@
     @media(min-width:1600px){.wrap{padding-top:48px}}
     @media(max-width:900px){.results{grid-template-columns:1fr;gap:20px}.wrap{padding:24px 20px 40px}header{padding:28px 26px 22px}.searchbox{padding:0 26px 24px}h1{font-size:32px}}
     @media(max-width:520px){.wrap{padding:14px 12px 32px}header{padding:25px 20px 20px;border-radius:18px 18px 0 0}.eyebrow{font-size:9px;letter-spacing:.15em}h1{font-size:29px;margin-top:9px}.searchbox{padding:0 20px 20px;border-radius:0 0 18px 18px}form{flex-wrap:wrap;gap:9px}.inputwrap{flex-basis:100%}input{height:50px;font-size:17px}.primary,.refresh{flex:1;height:44px;font-size:12px}.results{margin-top:20px}.panelhead{padding:16px 16px 12px}.panelmeta{padding:0 16px 12px}.content{padding:0 10px}.record{padding:18px 16px;margin:10px 0}.text{font-size:14px;line-height:1.95}.record h3{font-size:15px}.heading{gap:9px}.icon{width:33px;height:33px;border-radius:9px}h2{font-size:16px}select{max-width:115px;font-size:11px}.footer{padding:0 5px}}
-    /* iOS Safari: 폼 요소 포커스 시 자동 확대 방지 (16px 미만 글꼴 방지) */
-    @media (hover:none) and (pointer:coarse) {
+    /* 모바일 입력 자동 확대 방지: 최소 16px + viewport 확대 제한 */
+    @media (max-width:900px) {
       input, select, textarea { font-size:16px !important; }
-      #code { font-size:17px !important; }
+      #code { font-size:18px !important; }
     }
     @media(prefers-reduced-motion:reduce){button{transition:none}.loading:before{animation:none}}
     .airport-map-card{margin-top:26px;border:1px solid #e0e7f0;border-radius:18px;background:#fff;overflow:hidden;box-shadow:0 5px 22px #19365603}.map-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 20px}.map-toolbar h2{font-size:15px}.map-toolbar-actions{display:flex;align-items:center;gap:8px}.map-toolbar button{font-size:11px;padding:5px 11px;min-height:32px}.selected-airport{color:#3470d4;background:#edf4ff;border-radius:6px;font-size:11px;padding:4px 9px;font-weight:650}.selected-airport:empty{display:none}#airportMap{height:430px;background:#e8edf2;isolation:isolate}.map-status{padding:8px 20px;font-size:10px;color:#94a3b5;border-top:1px solid var(--line)}.map-status.error{color:#b35043}.airport-code-tooltip{background:#fffef5;border:1px solid #e1e5ed;box-shadow:0 2px 6px #15335612;color:#2f547c;font-weight:650;font-size:10px;padding:2px 5px;border-radius:4px;line-height:1.5}.airport-code-tooltip:before{display:none}.selected-code-tooltip{background:#2563eb;color:#fff;border-color:#2563eb}.leaflet-container{font-family:inherit}.leaflet-control-attribution{font-size:9px!important}.results[hidden]{display:none}.results{scroll-margin-top:18px}
