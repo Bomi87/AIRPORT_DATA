@@ -55,6 +55,7 @@
     @media(prefers-reduced-motion:reduce){button{transition:none}.loading:before{animation:none}}
     .airport-map-card{margin-top:26px;border:1px solid #e0e7f0;border-radius:18px;background:#fff;overflow:hidden;box-shadow:0 5px 22px #19365603}.map-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 20px}.map-toolbar h2{font-size:15px}.map-toolbar-actions{display:flex;align-items:center;gap:8px}.map-toolbar button{font-size:11px;padding:5px 11px;min-height:32px}.selected-airport{color:#3470d4;background:#edf4ff;border-radius:6px;font-size:11px;padding:4px 9px;font-weight:650}.selected-airport:empty{display:none}#airportMap{height:430px;background:#e8edf2;isolation:isolate}.map-status{padding:8px 20px;font-size:10px;color:#94a3b5;border-top:1px solid var(--line)}.map-status.error{color:#b35043}.airport-code-tooltip{background:#fffef5;border:1px solid #e1e5ed;box-shadow:0 2px 6px #15335612;color:#2f547c;font-weight:650;font-size:10px;padding:2px 5px;border-radius:4px;line-height:1.5}.airport-code-tooltip:before{display:none}.selected-code-tooltip{background:#2563eb;color:#fff;border-color:#2563eb}.leaflet-container{font-family:inherit}.leaflet-control-attribution{font-size:9px!important}.results[hidden]{display:none}.results{scroll-margin-top:18px}
     .route-overlay-buttons{display:flex;align-items:center;gap:6px;margin-right:auto;margin-left:12px}.route-overlay-buttons button{border:1px solid #cbd5e1;background:#fff;color:#475569;border-radius:7px;cursor:pointer;font-weight:700}.route-overlay-buttons button[aria-pressed="true"]{background:#fff4d6;border-color:#e7b441;color:#815b08}.route-overlay-buttons button:disabled{opacity:.6;cursor:wait}.route-overlay-buttons button:focus-visible{outline:2px solid #2563eb;outline-offset:2px}
+    .route-waypoint-pin{width:10px;height:15px;pointer-events:none!important}.route-waypoint-pin svg{display:block;width:10px;height:15px;overflow:visible;filter:drop-shadow(0 0 1px #fff)}
     @media(max-width:520px){#airportMap{height:330px}.airport-map-card{margin-top:18px}.map-toolbar{padding:12px 14px}.map-toolbar-actions{gap:5px}.map-toolbar button{font-size:10px;padding:4px 8px}.map-status{padding:8px 14px}}
     @media(max-width:520px){.map-toolbar{flex-wrap:wrap}.route-overlay-buttons{margin-left:0;gap:4px}.route-overlay-buttons button{font-size:10px;padding:4px 6px;min-height:30px}}
   </style>
@@ -166,18 +167,25 @@
         return Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180 ? [lat, lng] : null;
       }).filter(Boolean);
     }
-    function routeLinesFromKml(xmlText) {
+    function routeGeometryFromKml(xmlText) {
       const xml = new DOMParser().parseFromString(xmlText, 'application/xml');
       if (xml.getElementsByTagName('parsererror').length) throw new Error('KML 형식 오류');
       const elements = xml.getElementsByTagName('*');
       const lines = [];
+      const waypoints = [];
       for (const node of elements) {
+        if (node.localName === 'Placemark') {
+          const point = Array.from(node.getElementsByTagName('*')).find(n => n.localName === 'Point');
+          const coordinates = point && Array.from(point.getElementsByTagName('*')).find(n => n.localName === 'coordinates');
+          const position = parseRouteCoordinates(coordinates?.textContent)[0];
+          if (position) waypoints.push(position);
+        }
         if (node.localName !== 'LineString') continue;
         const coordinates = Array.from(node.getElementsByTagName('*')).find(n => n.localName === 'coordinates');
         const points = parseRouteCoordinates(coordinates?.textContent);
         if (points.length >= 2) lines.push(points);
       }
-      if (lines.length) return lines;
+      if (lines.length) return { lines, waypoints };
       // LineString이 없는 KML은 Document별 Point 순서를 각각 연결합니다.
       const documents = Array.from(elements).filter(n => n.localName === 'Document');
       const roots = documents.filter(n => !documents.some(other => other !== n && other.contains(n)));
@@ -193,7 +201,7 @@
         if (points.length >= 2) lines.push(points);
       }
       if (!lines.length) throw new Error('표시할 경로 좌표가 없습니다.');
-      return lines;
+      return { lines, waypoints };
     }
     async function toggleRouteOverlay(aircraft) {
       const state = routeOverlays[aircraft];
@@ -212,10 +220,18 @@
       try {
         const response = await fetch(ROUTE_KML_BASE + aircraft + '.kml', { cache: 'no-store' });
         if (!response.ok) throw new Error('HTTP ' + response.status);
-        const paths = routeLinesFromKml(await response.text());
+        const { lines: paths, waypoints } = routeGeometryFromKml(await response.text());
         const layer = L.layerGroup();
         for (const points of paths) {
           L.polyline(points, { pane: 'routeOverlayPane', color: state.color, weight: 3.5, opacity: .95, interactive: false, smoothFactor: 1 }).addTo(layer);
+        }
+        // Flight Map처럼 노란 waypoint 핀 표시. 마커는 마우스/터치 이벤트를 받지 않습니다.
+        const pinIcon = L.divIcon({
+          className: 'route-waypoint-pin', iconSize: [10, 15], iconAnchor: [5, 14],
+          html: '<svg viewBox="0 0 12 18" aria-hidden="true"><path d="M6 17C4.3 13.6 1 9.4 1 6a5 5 0 0 1 10 0c0 3.4-3.3 7.6-5 11Z" fill="#ffe500" stroke="#151515" stroke-width="1.3"/><circle cx="6" cy="6" r="1.8" fill="#fff" stroke="#1a1a1a" stroke-width=".8"/></svg>'
+        });
+        for (const position of waypoints) {
+          L.marker(position, { pane: 'routeOverlayPane', icon: pinIcon, interactive: false, keyboard: false }).addTo(layer);
         }
         layer.addTo(airportMap);
         state.layer = layer;
