@@ -217,7 +217,7 @@
     }
     function updateRouteWaypointLabels() {
       if (!airportMap) return;
-      const bounds = airportMap.getBounds(), show = airportMap.getZoom() >= 6;
+      const bounds = airportMap.getBounds(), show = airportMap.getZoom() >= 4;
       Object.values(routeOverlays).forEach(route => {
         (route.markers || []).forEach(marker => {
           if (show && bounds.contains(marker.getLatLng())) marker.openTooltip();
