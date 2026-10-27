@@ -54,7 +54,9 @@
     }
     @media(prefers-reduced-motion:reduce){button{transition:none}.loading:before{animation:none}}
     .airport-map-card{margin-top:26px;border:1px solid #e0e7f0;border-radius:18px;background:#fff;overflow:hidden;box-shadow:0 5px 22px #19365603}.map-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 20px}.map-toolbar h2{font-size:15px}.map-toolbar-actions{display:flex;align-items:center;gap:8px}.map-toolbar button{font-size:11px;padding:5px 11px;min-height:32px}.selected-airport{color:#3470d4;background:#edf4ff;border-radius:6px;font-size:11px;padding:4px 9px;font-weight:650}.selected-airport:empty{display:none}#airportMap{height:430px;background:#e8edf2;isolation:isolate}.map-status{padding:8px 20px;font-size:10px;color:#94a3b5;border-top:1px solid var(--line)}.map-status.error{color:#b35043}.airport-code-tooltip{background:#fffef5;border:1px solid #e1e5ed;box-shadow:0 2px 6px #15335612;color:#2f547c;font-weight:650;font-size:10px;padding:2px 5px;border-radius:4px;line-height:1.5}.airport-code-tooltip:before{display:none}.selected-code-tooltip{background:#2563eb;color:#fff;border-color:#2563eb}.leaflet-container{font-family:inherit}.leaflet-control-attribution{font-size:9px!important}.results[hidden]{display:none}.results{scroll-margin-top:18px}
+    .route-overlay-buttons{display:flex;align-items:center;gap:6px;margin-right:auto;margin-left:12px}.route-overlay-buttons button{border:1px solid #cbd5e1;background:#fff;color:#475569;border-radius:7px;cursor:pointer;font-weight:700}.route-overlay-buttons button[aria-pressed="true"]{background:#fff4d6;border-color:#e7b441;color:#815b08}.route-overlay-buttons button:disabled{opacity:.6;cursor:wait}.route-overlay-buttons button:focus-visible{outline:2px solid #2563eb;outline-offset:2px}
     @media(max-width:520px){#airportMap{height:330px}.airport-map-card{margin-top:18px}.map-toolbar{padding:12px 14px}.map-toolbar-actions{gap:5px}.map-toolbar button{font-size:10px;padding:4px 8px}.map-status{padding:8px 14px}}
+    @media(max-width:520px){.map-toolbar{flex-wrap:wrap}.route-overlay-buttons{margin-left:0;gap:4px}.route-overlay-buttons button{font-size:10px;padding:4px 6px;min-height:30px}}
   </style>
 </head>
 <body>
@@ -83,7 +85,7 @@
       <div id="message" role="status" aria-live="polite"></div>
     </section>
     <section class="airport-map-card" aria-label="공항 지도">
-      <div class="map-toolbar"><h2>공항 지도</h2><div class="map-toolbar-actions"><span id="selectedAirport" class="selected-airport"></span><button id="mapReload" type="button" aria-label="공항 지도 다시 불러오기">↻</button></div></div>
+      <div class="map-toolbar"><h2>공항 지도</h2><div class="route-overlay-buttons" aria-label="항공기 KML 경로 표시"><button id="routeHL8080" type="button" aria-pressed="false">HL8080</button><button id="routeHL8372" type="button" aria-pressed="false">HL8372</button></div><div class="map-toolbar-actions"><span id="selectedAirport" class="selected-airport"></span><button id="mapReload" type="button" aria-label="공항 지도 다시 불러오기">↻</button></div></div>
       <div id="airportMap" aria-label="공항 마커를 클릭하면 자료를 조회합니다"></div>
       <div id="mapStatus" class="map-status" role="status">공항 위치를 불러오는 중입니다…</div>
     </section>
@@ -152,7 +154,84 @@
     const airportLocations = new Map();
     const airportMarkers = new Map();
     let selectedCode = '';
-    function markerStyle(selected) { return { radius: selected ? 10 : 6, color: selected ? '#1d4ed8' : '#ffffff', weight: selected ? 3 : 1.8, fillColor: selected ? '#2563eb' : '#3976bc', fillOpacity: selected ? 1 : .85 }; }
+    // Flight Map이 사용하는 GitHub Pages KML. 버튼 클릭 시에만 다운로드합니다.
+    const ROUTE_KML_BASE = 'https://bomi87.github.io/FLIGHT_MAP/live/';
+    const routeOverlays = {
+      HL8080: { color: '#e6a400', layer: null, loading: false, serial: 0 },
+      HL8372: { color: '#d43f70', layer: null, loading: false, serial: 0 }
+    };
+    function parseRouteCoordinates(text) {
+      return String(text || '').trim().split(/\s+/).map(part => {
+        const [lng, lat] = part.split(',').map(Number);
+        return Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180 ? [lat, lng] : null;
+      }).filter(Boolean);
+    }
+    function routeLinesFromKml(xmlText) {
+      const xml = new DOMParser().parseFromString(xmlText, 'application/xml');
+      if (xml.getElementsByTagName('parsererror').length) throw new Error('KML 형식 오류');
+      const elements = xml.getElementsByTagName('*');
+      const lines = [];
+      for (const node of elements) {
+        if (node.localName !== 'LineString') continue;
+        const coordinates = Array.from(node.getElementsByTagName('*')).find(n => n.localName === 'coordinates');
+        const points = parseRouteCoordinates(coordinates?.textContent);
+        if (points.length >= 2) lines.push(points);
+      }
+      if (lines.length) return lines;
+      // LineString이 없는 KML은 Document별 Point 순서를 각각 연결합니다.
+      const documents = Array.from(elements).filter(n => n.localName === 'Document');
+      const roots = documents.filter(n => !documents.some(other => other !== n && other.contains(n)));
+      for (const root of roots.length ? roots : [xml.documentElement]) {
+        const points = [];
+        for (const node of root.getElementsByTagName('*')) {
+          if (node.localName !== 'Placemark') continue;
+          const point = Array.from(node.getElementsByTagName('*')).find(n => n.localName === 'Point');
+          const coordinates = point && Array.from(point.getElementsByTagName('*')).find(n => n.localName === 'coordinates');
+          const position = parseRouteCoordinates(coordinates?.textContent)[0];
+          if (position) points.push(position);
+        }
+        if (points.length >= 2) lines.push(points);
+      }
+      if (!lines.length) throw new Error('표시할 경로 좌표가 없습니다.');
+      return lines;
+    }
+    async function toggleRouteOverlay(aircraft) {
+      const state = routeOverlays[aircraft];
+      const button = $('route' + aircraft);
+      if (!state || !airportMap || state.loading) return;
+      if (state.layer) {
+        airportMap.removeLayer(state.layer);
+        state.layer = null;
+        button.setAttribute('aria-pressed', 'false');
+        button.title = aircraft + ' 경로 표시';
+        return;
+      }
+      state.loading = true;
+      button.disabled = true;
+      button.textContent = '로딩…';
+      try {
+        const response = await fetch(ROUTE_KML_BASE + aircraft + '.kml', { cache: 'no-store' });
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        const paths = routeLinesFromKml(await response.text());
+        const layer = L.layerGroup();
+        for (const points of paths) {
+          L.polyline(points, { pane: 'routeOverlayPane', color: state.color, weight: 3.5, opacity: .95, interactive: false, smoothFactor: 1 }).addTo(layer);
+        }
+        layer.addTo(airportMap);
+        state.layer = layer;
+        button.setAttribute('aria-pressed', 'true');
+        button.title = aircraft + ' 경로 숨기기';
+        // 현재 선택된 공항이 없으면 경로 전체가 보이도록 이동합니다.
+        if (!selectedCode) airportMap.fitBounds(L.latLngBounds(paths.flat()), { padding: [25, 25], maxZoom: 8 });
+      } catch (error) {
+        window.alert(aircraft + ' KML 경로를 불러오지 못했습니다.\n' + (error.message || error));
+      } finally {
+        state.loading = false;
+        button.disabled = false;
+        button.textContent = aircraft;
+      }
+    }
+    function markerStyle(selected) { return { pane: 'airportMarkerPane', radius: selected ? 10 : 6, color: selected ? '#1d4ed8' : '#ffffff', weight: selected ? 3 : 1.8, fillColor: selected ? '#2563eb' : '#3976bc', fillOpacity: selected ? 1 : .85 }; }
     function updateMapLabels() {
       if (!airportMap) return;
       const bounds = airportMap.getBounds(), detailed = airportMap.getZoom() >= 4;
@@ -176,7 +255,7 @@
       const location = airportLocations.get(code);
       if (!location) return;
       const label = el('span', '', code);
-      selectedMarker = L.circleMarker([location.lat, location.lng], { radius: 17, color: '#397af0', weight: 2, fillOpacity: .08, interactive: false }).addTo(airportMap)
+      selectedMarker = L.circleMarker([location.lat, location.lng], { pane: 'airportMarkerPane', radius: 17, color: '#397af0', weight: 2, fillOpacity: .08, interactive: false }).addTo(airportMap)
         .bindTooltip(label, { permanent: true, direction: 'top', offset: [0, -16], className: 'airport-code-tooltip selected-code-tooltip' });
       airportMap.setView([location.lat, location.lng], 7, { animate: false });
       updateMapLabels();
@@ -211,6 +290,12 @@
           L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}', { maxZoom: 16, attribution: 'Labels © Esri' })
         ]).addTo(airportMap);
         L.control.zoom({ position: 'bottomleft' }).addTo(airportMap);
+        // 경로는 기본 도형보다 위, 공항 아이콘보다 아래에 배치합니다.
+        airportMap.createPane('routeOverlayPane');
+        airportMap.getPane('routeOverlayPane').style.zIndex = '390';
+        airportMap.getPane('routeOverlayPane').style.pointerEvents = 'none';
+        airportMap.createPane('airportMarkerPane');
+        airportMap.getPane('airportMarkerPane').style.zIndex = '450';
         airportLayer = L.layerGroup().addTo(airportMap);
         airportMap.on('moveend', updateMapLabels);
       }
@@ -472,6 +557,8 @@
       AIRPORT_APP_STARTED = true;
 
       $('mapReload').addEventListener('click', () => initializeAirportMap(true));
+      $('routeHL8080').addEventListener('click', () => toggleRouteOverlay('HL8080'));
+      $('routeHL8372').addEventListener('click', () => toggleRouteOverlay('HL8372'));
       $('searchForm').addEventListener('submit', e => { e.preventDefault(); submit(false); });
       $('refresh').addEventListener('click', () => submit(true));
       $('aircraft').addEventListener('change', () => { if (state.code) load('sheet', 1, false); });
