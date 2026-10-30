@@ -265,8 +265,6 @@
           const span = document.createElement('span');
           span.className = 'route-waypoint-label-text';
           span.style.color = route.color; // HL8080: orange / HL8372: light green
-          span.style.webkitTextStroke = '0.7px #000000';
-          span.style.paintOrder = 'stroke fill';
           span.textContent = waypoint.name;
           span.style.transform = 'rotate(' + placement.angle + 'deg)';
           const icon = L.divIcon({ className: 'route-waypoint-text-marker', html: span.outerHTML, iconSize: null });
