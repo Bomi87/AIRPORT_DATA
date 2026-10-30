@@ -55,7 +55,7 @@
     @media(prefers-reduced-motion:reduce){button{transition:none}.loading:before{animation:none}}
     .airport-map-card{margin-top:26px;border:1px solid #e0e7f0;border-radius:18px;background:#fff;overflow:hidden;box-shadow:0 5px 22px #19365603}.map-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 20px}.map-toolbar h2{font-size:15px}.map-toolbar-actions{display:flex;align-items:center;gap:8px}.map-toolbar button{font-size:11px;padding:5px 11px;min-height:32px}.selected-airport{color:#3470d4;background:#edf4ff;border-radius:6px;font-size:11px;padding:4px 9px;font-weight:650}.selected-airport:empty{display:none}#airportMap{height:430px;background:#e8edf2;isolation:isolate}.map-status{padding:8px 20px;font-size:10px;color:#94a3b5;border-top:1px solid var(--line)}.map-status.error{color:#b35043}.airport-code-tooltip{background:#fffef5;border:1px solid #e1e5ed;box-shadow:0 2px 6px #15335612;color:#2f547c;font-weight:650;font-size:10px;padding:2px 5px;border-radius:4px;line-height:1.5}.airport-code-tooltip:before{display:none}.selected-code-tooltip{background:#2563eb;color:#fff;border-color:#2563eb}.leaflet-container{font-family:inherit}.leaflet-control-attribution{font-size:9px!important}.results[hidden]{display:none}.results{scroll-margin-top:18px}
     .route-overlay-buttons{display:flex;align-items:center;gap:6px;margin-right:auto;margin-left:12px}.route-overlay-buttons button{border:1px solid #cbd5e1;background:#fff;color:#475569;border-radius:7px;cursor:pointer;font-weight:700}.route-overlay-buttons button[aria-pressed="true"]{background:#fff4d6;border-color:#e7b441;color:#815b08}.route-overlay-buttons button:disabled{opacity:.6;cursor:wait}.route-overlay-buttons button:focus-visible{outline:2px solid #2563eb;outline-offset:2px}
-    .route-waypoint-pin{width:12px;height:17px;cursor:pointer}.route-waypoint-pin svg{display:block;width:12px;height:17px;overflow:visible;filter:drop-shadow(0 0 1px #fff)}.route-waypoint-label{font-size:10px;font-weight:700;color:#385b14;background:transparent;border:none;box-shadow:none;padding:0;border-radius:0}.route-waypoint-label:before{display:none}.route-waypoint-label-text{display:inline-block;white-space:nowrap;transform:rotate(-90deg);transform-origin:left center}
+    .route-waypoint-pin{width:12px;height:17px;cursor:pointer}.route-waypoint-pin svg{display:block;width:12px;height:17px;overflow:visible;filter:drop-shadow(0 0 1px #fff)}.route-waypoint-label{font-size:10px;font-weight:700;color:#385b14;background:transparent;border:none;box-shadow:none;padding:0;border-radius:0}.route-waypoint-label:before{display:none}.route-waypoint-label-text{display:inline-block;white-space:nowrap;transform-origin:left center;line-height:1;pointer-events:none;user-select:none}.route-waypoint-text-marker{background:transparent!important;border:none!important;pointer-events:none!important;color:#385b14;font-size:10px;font-weight:700}
     @media(max-width:520px){#airportMap{height:330px}.airport-map-card{margin-top:18px}.map-toolbar{padding:12px 14px}.map-toolbar-actions{gap:5px}.map-toolbar button{font-size:10px;padding:4px 8px}.map-status{padding:8px 14px}}
     @media(max-width:520px){.map-toolbar{flex-wrap:wrap}.route-overlay-buttons{margin-left:0;gap:4px}.route-overlay-buttons button{font-size:10px;padding:4px 6px;min-height:30px}}
   </style>
@@ -215,14 +215,67 @@
       if (!lines.length) throw new Error('표시할 경로 좌표가 없습니다.');
       return { lines, waypoints };
     }
+    // Flight Map 방식: 항로 방향에 대한 수직 각도와 아래쪽 방향의 라벨 배치.
+    const ROUTE_LABEL_DISTANCE = 3;
+    const ROUTE_LABEL_COLLISION_PAD = 2;
+    function routeWaypointPlacement(position, paths) {
+      const current = airportMap.latLngToLayerPoint(position);
+      let nearest = null, minDistance = Infinity;
+      for (const path of paths) {
+        for (let i = 0; i < path.length - 1; i++) {
+          const a = airportMap.latLngToLayerPoint(path[i]);
+          const b = airportMap.latLngToLayerPoint(path[i + 1]);
+          const dx = b.x - a.x, dy = b.y - a.y;
+          const lengthSquared = dx * dx + dy * dy;
+          if (!lengthSquared) continue;
+          const t = Math.max(0, Math.min(1, ((current.x-a.x)*dx + (current.y-a.y)*dy)/lengthSquared));
+          const distance = (current.x-a.x-t*dx)**2 + (current.y-a.y-t*dy)**2;
+          if (distance < minDistance) { minDistance = distance; nearest = { dx, dy }; }
+        }
+      }
+      const routeAngle = nearest ? Math.atan2(nearest.dy, nearest.dx) * 180 / Math.PI : 0;
+      const candidate1 = routeAngle + 90, candidate2 = routeAngle - 90;
+      const angle = Math.sin(candidate1 * Math.PI / 180) >= Math.sin(candidate2 * Math.PI / 180) ? candidate1 : candidate2;
+      const rad = angle * Math.PI / 180;
+      return {
+        angle: ((angle + 180) % 360 + 360) % 360 - 180,
+        latlng: airportMap.layerPointToLatLng(L.point(current.x + Math.cos(rad)*ROUTE_LABEL_DISTANCE, current.y + Math.sin(rad)*ROUTE_LABEL_DISTANCE))
+      };
+    }
+    function routeRectsOverlap(a,b) {
+      return !(a.right < b.left || a.left > b.right || a.bottom < b.top || a.top > b.bottom);
+    }
     function updateRouteWaypointLabels() {
       if (!airportMap) return;
-      const bounds = airportMap.getBounds(), show = airportMap.getZoom() >= 4;
+      const bounds = airportMap.getBounds();
+      const show = airportMap.getZoom() >= 4;
+      const placed = [];
+      // 매 이동/줌 이후 라벨 위치와 충돌을 다시 계산합니다. 핀과 팝업은 건드리지 않습니다.
       Object.values(routeOverlays).forEach(route => {
-        (route.markers || []).forEach(marker => {
-          if (show && bounds.contains(marker.getLatLng())) marker.openTooltip();
-          else marker.closeTooltip();
-        });
+        if (!route.layer) return;
+        (route.labels || []).forEach(label => route.layer.removeLayer(label));
+        route.labels = [];
+      });
+      if (!show) return;
+      Object.values(routeOverlays).forEach(route => {
+        if (!route.layer || !route.waypoints || !route.paths) return;
+        for (const waypoint of route.waypoints) {
+          if (!bounds.contains(waypoint.position)) continue;
+          const placement = routeWaypointPlacement(waypoint.position, route.paths);
+          const span = document.createElement('span');
+          span.className = 'route-waypoint-label-text';
+          span.textContent = waypoint.name;
+          span.style.transform = 'rotate(' + placement.angle + 'deg)';
+          const icon = L.divIcon({ className: 'route-waypoint-text-marker', html: span.outerHTML, iconSize: null });
+          const label = L.marker(placement.latlng, {pane:'routeWaypointPane', icon, interactive:false, keyboard:false, zIndexOffset: 3000}).addTo(route.layer);
+          const element = label.getElement()?.querySelector('.route-waypoint-label-text');
+          const r = element?.getBoundingClientRect();
+          if (!r || !r.width || !r.height) { route.labels.push(label); continue; }
+          const pad = ROUTE_LABEL_COLLISION_PAD;
+          const rect = {left:r.left-pad,right:r.right+pad,top:r.top-pad,bottom:r.bottom+pad};
+          if (placed.some(other => routeRectsOverlap(rect,other))) route.layer.removeLayer(label);
+          else { placed.push(rect); route.labels.push(label); }
+        }
       });
     }
     async function toggleRouteOverlay(aircraft) {
@@ -233,6 +286,8 @@
         airportMap.removeLayer(state.layer);
         state.layer = null;
         state.markers = [];
+        state.labels = [];
+        state.paths = null; state.waypoints = null;
         button.setAttribute('aria-pressed', 'false');
         button.title = aircraft + ' 경로 표시';
         return;
@@ -268,16 +323,13 @@
             content.appendChild(details);
           }
           marker.bindPopup(content, { maxWidth: 330 });
-          const waypointLabel = document.createElement('span');
-          waypointLabel.className = 'route-waypoint-label-text';
-          waypointLabel.textContent = waypoint.name;
-          marker.bindTooltip(waypointLabel, { permanent: true, direction: 'right', offset: [7, -7], className: 'route-waypoint-label' });
           marker.addTo(layer);
           markers.push(marker);
         }
         layer.addTo(airportMap);
         state.layer = layer;
         state.markers = markers;
+        state.paths = paths; state.waypoints = waypoints; state.labels = [];
         button.setAttribute('aria-pressed', 'true');
         button.title = aircraft + ' 경로 숨기기';
         // 현재 선택된 공항이 없으면 경로 전체가 보이도록 이동합니다.
